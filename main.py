@@ -9,6 +9,7 @@ from tkinter import ttk, filedialog
 from datetime import datetime, timezone
 
 from supabase import create_client
+from saved_variables import own_data, player_key
 
 # ==========================================================
 # Тёмная тема
@@ -122,9 +123,10 @@ ADDON_LUA = (ADDON_DIR / "INEEDGEAR.lua").read_text(encoding="utf-8")
 # Утилиты
 # ==========================================================
 def extract_player_key(lua_text):
-    import re
-    match = re.search(r'\["characters"\]\s*=\s*\{\s*\["([^"\\]+)"\]\s*=\s*\{', lua_text)
-    return match.group(1) if match else None
+    try:
+        return player_key(lua_text)
+    except ValueError:
+        return None
 
 
 def lua_quote(value):
@@ -220,7 +222,7 @@ def do_update(settings, log_fn):
 
         row = {
             "player_key": player_key,
-            "equipped": local_text.split("\n-- === IMPORTED DATA (auto) ===\n", 1)[0],
+            "equipped": own_data(local_text),
             "wishlist": "",
             "last_update": datetime.now(timezone.utc).isoformat(),
         }

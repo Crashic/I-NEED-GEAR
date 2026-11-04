@@ -74,8 +74,8 @@ class UpdateTests(unittest.TestCase):
                 addon, new_addon = root / "INEEDGEAR", root / "new-addon"
                 addon.mkdir()
                 new_addon.mkdir()
-                (addon / "data.lua").write_text("старый")
-                (new_addon / "data.lua").write_text("новый")
+                (addon / "data.lua").write_text("старый", encoding="utf-8")
+                (new_addon / "data.lua").write_text("новый", encoding="utf-8")
                 plan = {"target": str(target), "source": str(source), "addon_target": str(addon),
                         "addon_source": str(new_addon), "sha256": hashlib.sha256(b"new").hexdigest()}
                 with patch("updates.subprocess.Popen", side_effect=OSError("Ошибка запуска") if fail else None):
@@ -85,7 +85,7 @@ class UpdateTests(unittest.TestCase):
                     else:
                         updates.install_transaction(plan)
                 self.assertEqual(target.read_bytes(), b"old" if fail else b"new")
-                self.assertEqual((addon / "data.lua").read_text(), "старый" if fail else "новый")
+                self.assertEqual((addon / "data.lua").read_text(encoding="utf-8"), "старый" if fail else "новый")
 
     def test_manifest_selects_dev_asset(self):
         release = {"tag_name": "v1.0.1", "assets": [
