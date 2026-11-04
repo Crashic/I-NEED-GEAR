@@ -8,7 +8,8 @@ from PyInstaller.archive.readers import CArchiveReader
 
 for name in ("INEEDGEAR.exe", "INEEDGEAR-DEV.exe"):
     archive = CArchiveReader(str(Path("release", name)))
-    modules = archive.open_embedded_archive("PYZ.pyz").toc
+    embedded = next(key for key in archive.toc if key.lower().endswith(".pyz"))
+    modules = archive.open_embedded_archive(embedded).toc
     if ("developer" in modules) != (name == "INEEDGEAR-DEV.exe"):
         raise RuntimeError("Неверный состав модулей в сборке: " + name)
     with tempfile.TemporaryDirectory() as folder:

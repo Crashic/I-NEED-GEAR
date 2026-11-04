@@ -214,10 +214,13 @@ def install_transaction(plan):
             shutil.rmtree(addon_stage, ignore_errors=True)
     if addon_backup.exists():
         saved = addon_target.with_name("INEEDGEAR.previous")
-        if saved.exists():
-            shutil.rmtree(saved)
-        os.replace(addon_backup, saved)
-        shutil.rmtree(addon_stage, ignore_errors=True)
+        try:
+            if saved.exists():
+                shutil.rmtree(saved)
+            os.replace(addon_backup, saved)
+            shutil.rmtree(addon_stage, ignore_errors=True)
+        except OSError:
+            pass  # Установка завершена; резервная копия остаётся в служебной папке.
 
 
 def apply_update(plan_path):
