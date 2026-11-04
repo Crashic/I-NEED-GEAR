@@ -2,10 +2,11 @@
 
 import json
 import os
+import urllib.error
 import urllib.request
 import webbrowser
 
-from updates import API, REPOSITORY, read_json, version_tuple
+from updates import API, REPOSITORY, version_tuple
 
 
 def local_token():
@@ -25,12 +26,14 @@ def local_token():
 def publish_release(version, log):
     version_tuple(version)
     version = version.removeprefix("v")
-    repository = read_json(API)
+    headers = {"Authorization": "Bearer " + local_token(), "Accept": "application/vnd.github+json",
+               "User-Agent": "INEEDGEAR", "Content-Type": "application/json"}
+    with urllib.request.urlopen(urllib.request.Request(API, headers=headers), timeout=30) as response:
+        repository = json.load(response)
     request = urllib.request.Request(
         API + "/actions/workflows/release.yml/dispatches",
         data=json.dumps({"ref": repository["default_branch"], "inputs": {"version": version}}).encode(),
-        headers={"Authorization": "Bearer " + local_token(), "Accept": "application/vnd.github+json",
-                 "User-Agent": "INEEDGEAR", "Content-Type": "application/json"}, method="POST")
+        headers=headers, method="POST")
     with urllib.request.urlopen(request, timeout=30):
         pass
     log(f"GitHub принял запрос сборки версии {version}. Это ещё не означает завершение публикации.")
