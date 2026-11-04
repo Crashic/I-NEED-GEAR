@@ -26,8 +26,22 @@ class UpdateTests(unittest.TestCase):
 
     def test_only_new_stable_release(self):
         for tag, expected in (("v1.0.0", False), ("v0.9.0", False), ("v1.0.1", True)):
-            with patch("updates.read_json", return_value={"tag_name": tag}):
-                self.assertEqual(bool(updates.latest_release("1.0.0")), expected)
+            manifest = {"schema": 1, "version": tag.removeprefix("v"), "files": {
+                name: {} for name in ("INEEDGEAR.exe", "INEEDGEAR-DEV.exe", "INEEDGEAR-addon.zip")}}
+            with patch("updates.read_json", return_value=manifest) as network:
+                release = updates.latest_release("1.0.0")
+                self.assertEqual(bool(release), expected)
+                network.assert_called_once_with(updates.LATEST_MANIFEST_URL)
+                self.assertNotIn("api.github.com", network.call_args.args[0])
+                if expected:
+                    self.assertIn("/download/v1.0.1/", updates.asset_url(release, "INEEDGEAR.exe"))
+
+    def test_invalid_latest_manifest(self):
+        for manifest in ({}, [], {"schema": 2, "version": "1.0.1"},
+                         {"schema": 1, "version": "1.0.1", "files": {}},
+                         {"schema": 1, "version": "../1.0.1", "files": {}}):
+            with patch("updates.read_json", return_value=manifest), self.assertRaises(ValueError):
+                updates.latest_release("1.0.0")
 
     def test_asset_must_belong_to_repository(self):
         with self.assertRaises(ValueError):

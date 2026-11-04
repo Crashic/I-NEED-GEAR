@@ -18,6 +18,7 @@ import zipfile
 REPOSITORY = "Crashic/I-NEED-GEAR"
 API = f"https://api.github.com/repos/{REPOSITORY}"
 RELEASES_URL = f"https://github.com/{REPOSITORY}/releases"
+LATEST_MANIFEST_URL = RELEASES_URL + "/latest/download/manifest.json"
 MAX_DOWNLOAD = 300 * 1024 * 1024
 
 
@@ -39,16 +40,30 @@ def read_json(url):
 
 def latest_release(current):
     try:
-        release = read_json(API + "/releases/latest")
+        # Публичный файл релиза не расходует лимит анонимного REST API.
+        manifest = read_json(LATEST_MANIFEST_URL)
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             return None
         if exc.code in (403, 429):
-            raise RuntimeError("GitHub временно ограничил запросы. Попробуйте позднее.") from exc
+            raise RuntimeError("GitHub временно ограничил скачивание. Попробуйте позднее.") from exc
         raise
-    if release.get("draft") or release.get("prerelease"):
+    if not isinstance(manifest, dict) or manifest.get("schema") != 1:
+        raise ValueError("Неизвестный формат манифеста обновлений.")
+    version = manifest.get("version")
+    if version_tuple(version) <= version_tuple(current):
         return None
-    return release if version_tuple(release["tag_name"]) > version_tuple(current) else None
+    tag = "v" + version.removeprefix("v")
+    names = ("INEEDGEAR.exe", "INEEDGEAR-DEV.exe", "INEEDGEAR-addon.zip")
+    if not isinstance(manifest.get("files"), dict) or any(name not in manifest["files"] for name in names):
+        raise ValueError("В манифесте отсутствуют файлы обновления.")
+    # После определения версии все загрузки привязаны к одному релизу.
+    # Если latest изменится во время установки, файлы разных версий не смешаются.
+    base = RELEASES_URL + "/download/" + tag + "/"
+    return {"tag_name": tag, "assets": [
+        {"name": name, "browser_download_url": base + name}
+        for name in (*names, "manifest.json")
+    ]}
 
 
 def asset_url(release, name):
