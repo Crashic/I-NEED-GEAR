@@ -108,7 +108,7 @@ end
 local saveGearBtn = CreateFrame("Button", nil, t1, "UIPanelButtonTemplate")
 saveGearBtn:SetSize(220, 32)
 saveGearBtn:SetPoint("TOPLEFT", 10, -10)
-saveGearBtn:SetText("Сохранить снаряжение")
+saveGearBtn:SetText("Сохранить и обновить")
 saveGearBtn:SetScript("OnClick", function()
     local key = GetPlayerKey()
     INEEDGEARDB.characters[key] = INEEDGEARDB.characters[key] or {}
@@ -120,12 +120,13 @@ saveGearBtn:SetScript("OnClick", function()
             table.insert(INEEDGEARDB.characters[key].equipped, link)
         end
     end
-    print("|cff00ff00I NEED GEAR:|r Снаряжение сохранено ("..#INEEDGEARDB.characters[key].equipped.." предметов)")
+    print("|cff00ff00I NEED GEAR:|r Снаряжение сохранено. После загрузки интерфейса нажмите «Синхронизировать» в приложении.")
+    ReloadUI()
 end)
 
 local exportBtn = CreateFrame("Button", nil, t1, "UIPanelButtonTemplate")
 exportBtn:SetSize(220, 32)
-exportBtn:SetPoint("TOPLEFT", 10, -50)
+exportBtn:SetPoint("TOPLEFT", 10, -90)
 exportBtn:SetText("Показать код для обмена")
 exportBtn:SetScript("OnClick", function()
     local key = GetPlayerKey()
@@ -146,13 +147,19 @@ exportBtn:SetScript("OnClick", function()
     print("|cffffd700Скопируйте строку выше и отправьте другому игроку.|r")
 end)
 
+local importBtn = CreateFrame("Button", nil, t1, "UIPanelButtonTemplate")
+importBtn:SetSize(220, 32)
+importBtn:SetPoint("TOPLEFT", 10, -50)
+importBtn:SetText("Обновить данные друзей")
+importBtn:SetScript("OnClick", function() ReloadUI() end)
+
 local info1 = t1:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-info1:SetPoint("TOPLEFT", 10, -100)
+info1:SetPoint("TOPLEFT", 10, -140)
 info1:SetJustifyH("LEFT")
-info1:SetText("1) Нажми «Сохранить снаряжение».\n" ..
-              "2) Выйди из игры.\n" ..
-              "3) Запусти приложение на ПК и нажми «Обновить».\n" ..
-              "4) Данные друзей появятся на вкладке «Согильдийцы».")
+info1:SetText("1) Нажми «Сохранить и обновить». Интерфейс перезагрузится.\n" ..
+              "2) В приложении на ПК нажми «Синхронизировать».\n" ..
+              "3) Нажми здесь «Обновить данные друзей».\n" ..
+              "4) Открой вкладку «Согильдийцы». Игру закрывать не нужно.")
 
 -- ==========================================================
 -- Вкладка 2: Инсты (заглушка)
@@ -219,7 +226,7 @@ local function RebuildList()
         child:SetParent(nil)
     end
 
-    local imported = INEEDGEARDB.imported or {}
+    local imported = INEEDGEAR_IMPORTED or {}
     local y = 0
     for name, rawLua in pairs(imported) do
         local btn = CreateFrame("Button", nil, listContent, "UIPanelButtonTemplate")
@@ -246,6 +253,40 @@ SlashCmdList["INEEDGEAR"] = function()
     end
 end
 
+-- Кнопка открытия у миникарты; положение сохраняется вместе с настройками аддона.
+local minimapBtn = CreateFrame("Button", "INEEDGEARMinimapButton", Minimap)
+minimapBtn:SetSize(32, 32)
+minimapBtn:SetFrameStrata("MEDIUM")
+minimapBtn:SetNormalTexture("Interface\\AddOns\\INEEDGEAR\\icon.tga")
+minimapBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+minimapBtn:RegisterForClicks("LeftButtonUp")
+minimapBtn:RegisterForDrag("LeftButton")
+local function PositionMinimapButton()
+    local angle = math.rad(tonumber(INEEDGEARDB.minimapAngle) or 225)
+    minimapBtn:ClearAllPoints()
+    minimapBtn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * 82, math.sin(angle) * 82)
+end
+minimapBtn:SetScript("OnClick", function() SlashCmdList["INEEDGEAR"]() end)
+minimapBtn:SetScript("OnDragStart", function(self)
+    self:SetScript("OnUpdate", function()
+        local x, y = GetCursorPosition()
+        local scale = Minimap:GetEffectiveScale()
+        local centerX, centerY = Minimap:GetCenter()
+        INEEDGEARDB.minimapAngle = math.deg(math.atan2(y / scale - centerY, x / scale - centerX))
+        PositionMinimapButton()
+    end)
+end)
+minimapBtn:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
+minimapBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:AddLine("I NEED GEAR", 1, 0.82, 0)
+    GameTooltip:AddLine("Нажмите, чтобы открыть аддон.", 1, 1, 1)
+    GameTooltip:AddLine("Перетащите значок вдоль миникарты.", 0.7, 0.7, 0.7)
+    GameTooltip:Show()
+end)
+minimapBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+PositionMinimapButton()
+
 -- ==========================================================
 -- Загрузка
 -- ==========================================================
@@ -255,7 +296,8 @@ ef:SetScript("OnEvent", function(_, _, name)
     if name == addonName then
         INEEDGEARDB = INEEDGEARDB or { characters = {}, imported = {} }
         INEEDGEARDB.characters = INEEDGEARDB.characters or {}
-        INEEDGEARDB.imported = INEEDGEARDB.imported or {}
+        INEEDGEARDB.imported = nil
+        PositionMinimapButton()
         print("|cff00ff00I NEED GEAR|r загружен. /ing — открыть.")
     end
 end)

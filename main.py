@@ -9,7 +9,8 @@ from tkinter import ttk, filedialog
 from datetime import datetime, timezone
 
 from supabase import create_client
-from saved_variables import own_data, player_key
+from saved_variables import player_key
+from sync_data import read_snapshot, write_imports, IMPORT_FILENAME
 
 from theme import (apply_dark_theme, DARK_BG, DARK_BG2, DARK_FG, DARK_FG_DIM,
                    DARK_ACCENT, DARK_BORDER, DARK_ENTRY)
@@ -88,35 +89,6 @@ def extract_player_key(lua_text):
         return None
 
 
-def lua_quote(value):
-    return '"' + ''.join(
-        '\\' + format(ord(char), '03d') if ord(char) < 32 else
-        '\\' + char if char in ('"', '\\') else char
-        for char in value
-    ) + '"'
-
-def append_imports_to_db(local_path, imports, log_fn):
-    with open(local_path, "r", encoding="utf-8", errors="ignore") as f:
-        text = f.read()
-
-    marker = "\n-- === IMPORTED DATA (auto) ===\n"
-    if marker in text:
-        text = text.split(marker)[0]
-
-    text += marker
-    text += "INEEDGEARDB = INEEDGEARDB or {}\n"
-    text += "INEEDGEARDB.imported = {\n"
-    for name, raw in imports.items():
-        text += f"    [{lua_quote(name)}] = {lua_quote(raw)},\n"
-    text += "}\n"
-
-    shutil.copy2(local_path, local_path + ".ing-backup")
-    temporary = local_path + ".ing-tmp"
-    with open(temporary, "w", encoding="utf-8") as f:
-        f.write(text)
-    os.replace(temporary, local_path)
-    log_fn(f"💾 Импорт дописан в файл аддона ({len(imports)} персонажей)")
-
 # ==========================================================
 # Установка аддона (вшитая версия)
 # ==========================================================
@@ -141,6 +113,8 @@ def install_addon(addons_folder, log_fn):
         with open(os.path.join(target, "INEEDGEAR.lua"), "w", encoding="utf-8") as f:
             f.write(ADDON_LUA)
         shutil.copy2(ADDON_DIR / "icon.tga", Path(target) / "icon.tga")
+        if not (Path(target) / IMPORT_FILENAME).exists():
+            shutil.copy2(ADDON_DIR / IMPORT_FILENAME, Path(target) / IMPORT_FILENAME)
         log_fn(f"✅ Аддон установлен в: {target}")
         log_fn("💡 Зайди в игру и набери /ing")
     except PermissionError:
@@ -164,11 +138,19 @@ def do_update(settings, log_fn):
     local_path = os.path.join(local_folder, local_file)
     if not os.path.exists(local_path):
         log_fn(f"❌ Файл аддона не найден: {local_path}")
-        log_fn("💡 Зайди в игру, нажми «Сохранить снаряжение», выйди из игры и попробуй снова.")
+        log_fn("💡 Зайди в игру, нажми «Сохранить и обновить» и попробуй снова.")
         return
 
-    with open(local_path, "r", encoding="utf-8", errors="ignore") as f:
-        local_text = f.read()
+    addon_folder = Path(settings.get("addons_folder", "")) / "INEEDGEAR"
+    toc = addon_folder / "INEEDGEAR.toc"
+    if not toc.is_file() or IMPORT_FILENAME not in toc.read_text(encoding="utf-8").splitlines():
+        log_fn("Установите новую версию аддона: раздел «Аддон» → «Установить».")
+        return
+    try:
+        local_text = read_snapshot(local_path)
+    except ValueError as exc:
+        log_fn(str(exc))
+        return
 
     player_key = settings.get("player_key") or extract_player_key(local_text)
     if not player_key:
@@ -182,7 +164,7 @@ def do_update(settings, log_fn):
 
         row = {
             "player_key": player_key,
-            "equipped": own_data(local_text),
+            "equipped": local_text,
             "wishlist": "",
             "last_update": datetime.now(timezone.utc).isoformat(),
         }
@@ -202,11 +184,9 @@ def do_update(settings, log_fn):
                 imports[pk] = raw
                 log_fn(f"   ⬇️ {pk}")
 
-        if imports:
-            append_imports_to_db(local_path, imports, log_fn)
-        else:
-            append_imports_to_db(local_path, {}, log_fn)
-            log_fn("ℹ️ Данных других игроков пока нет.")
+        write_imports(addon_folder, imports)
+        log_fn(f"Данные друзей сохранены отдельно: {len(imports)} персонажей.")
+        log_fn("В игре нажмите «Обновить данные друзей» в окне /ing.")
 
         log_fn("✅ Готово.")
 
@@ -342,7 +322,7 @@ class App(tk.Tk):
             self.settings_panel.pack(fill="both", expand=True)
         else:
             pages = {
-                "home": ("Снаряжение", "Сохраните снаряжение в игре и закройте WoW. Затем отправьте свои данные и получите данные друзей.",
+                "home": ("Снаряжение", "В аддоне нажмите «Сохранить и обновить». Затем синхронизируйте здесь и в игре нажмите «Обновить данные друзей».",
                          "Обмен данными", "Синхронизировать", self.on_update),
                 "gear": ("Аддон", "Выберите папку AddOns в настройках и установите аддон. В игре окно открывается командой /ing.",
                          "Файлы аддона", "Установить", self.on_install),
@@ -399,8 +379,6 @@ class App(tk.Tk):
         self.events.put((self.log, (message,)))
 
     def on_update(self):
-        if not messagebox.askokcancel("Синхронизация", "Перед синхронизацией полностью закройте WoW. Игра может перезаписать файл данных. Продолжить?"):
-            return
         settings = self.settings.copy()
         self._work(lambda: do_update(settings, self.thread_log))
 
@@ -613,7 +591,7 @@ class SettingsPanel(tk.Frame):
             "<игра>\\_forever_\\WTF\\Account\\\n"
             "<АККАУНТ>\\SavedVariables\n\n"
             "Внутри SavedVariables должен находиться INEEDGEARDB.lua.\n"
-            "Он появится после сохранения снаряжения и выхода из игры.\n\n"
+            "Он появится после кнопки «Сохранить и обновить» в аддоне.\n\n"
             "Указывайте конечные папки AddOns и SavedVariables, а не корень игры. "
             "Если папка клиента называется иначе, используйте её вместо _forever_."
         )

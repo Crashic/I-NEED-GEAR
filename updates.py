@@ -205,6 +205,9 @@ def install_transaction(plan):
     try:
         shutil.copy2(source, staged_exe)
         shutil.copytree(addon_source, addon_stage / "new")
+        cached_friends = addon_target / "FriendsData.lua"
+        if cached_friends.is_file() and (addon_stage / "new" / "FriendsData.lua").is_file():
+            shutil.copy2(cached_friends, addon_stage / "new" / "FriendsData.lua")
         replace_with_retry(target, backup)
         moved_exe = True
         replace_with_retry(staged_exe, target)
