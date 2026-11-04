@@ -27,7 +27,7 @@ class UpdateTests(unittest.TestCase):
     def test_only_new_stable_release(self):
         for tag, expected in (("v1.0.0", False), ("v0.9.0", False), ("v1.0.1", True)):
             manifest = {"schema": 1, "version": tag.removeprefix("v"), "files": {
-                name: {} for name in ("INEEDGEAR.exe", "INEEDGEAR-DEV.exe", "INEEDGEAR-addon.zip")}}
+                name: {} for name in ("INEEDGEAR.exe", "INEEDGEAR-addon.zip")}}
             with patch("updates.read_json", return_value=manifest) as network:
                 release = updates.latest_release("1.0.0")
                 self.assertEqual(bool(release), expected)
@@ -101,18 +101,18 @@ class UpdateTests(unittest.TestCase):
                 self.assertEqual(target.read_bytes(), b"old" if fail else b"new")
                 self.assertEqual((addon / "data.lua").read_text(encoding="utf-8"), "старый" if fail else "новый")
 
-    def test_manifest_selects_dev_asset(self):
+    def test_manifest_selects_application(self):
         release = {"tag_name": "v1.0.1", "assets": [
             {"name": name, "browser_download_url": f"https://github.com/{updates.REPOSITORY}/releases/download/v1.0.1/{name}"}
-            for name in ("manifest.json", "INEEDGEAR-DEV.exe", "INEEDGEAR-addon.zip")]}
+            for name in ("manifest.json", "INEEDGEAR.exe", "INEEDGEAR-addon.zip")]}
         manifest = {"schema": 1, "version": "1.0.1", "files": {
-            name: {"size": 1, "sha256": "0" * 64} for name in ("INEEDGEAR-DEV.exe", "INEEDGEAR-addon.zip")}}
+            name: {"size": 1, "sha256": "0" * 64} for name in ("INEEDGEAR.exe", "INEEDGEAR-addon.zip")}}
         with tempfile.TemporaryDirectory() as folder, patch("updates.read_json", return_value=manifest), \
                 patch("updates.download") as download, patch("updates.extract_addon"):
-            plan = updates.prepare_update(release, folder, True, lambda message: None)
+            plan = updates.prepare_update(release, folder, lambda message: None)
             try:
-                self.assertTrue(download.call_args_list[0].args[0].endswith("INEEDGEAR-DEV.exe"))
-                self.assertTrue(json.loads(plan.read_text(encoding="utf-8"))["source"].endswith("INEEDGEAR-DEV.exe"))
+                self.assertTrue(download.call_args_list[0].args[0].endswith("INEEDGEAR.exe"))
+                self.assertTrue(json.loads(plan.read_text(encoding="utf-8"))["source"].endswith("INEEDGEAR.exe"))
             finally:
                 import shutil
                 shutil.rmtree(plan.parent)

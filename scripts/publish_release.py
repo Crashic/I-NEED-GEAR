@@ -41,7 +41,7 @@ def publish():
         release = request(api + "/releases", {
             "tag_name": tag, "target_commitish": os.environ["RELEASE_COMMIT"],
             "name": "I NEED GEAR " + version, "draft": True, "prerelease": False,
-            "body": "Для друзей: INEEDGEAR.exe. Для разработчика: INEEDGEAR-DEV.exe. Аддон: INEEDGEAR-addon.zip."}, "POST")
+            "body": "Программа для всех: INEEDGEAR.exe. Аддон: INEEDGEAR-addon.zip."}, "POST")
     except urllib.error.HTTPError as exc:
         if exc.code != 422:
             raise

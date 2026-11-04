@@ -26,20 +26,16 @@ def build():
                           toc.read_text(encoding="utf-8")), encoding="utf-8")
     output = Path("release")
     output.mkdir(exist_ok=True)
-    for entry, name in (("main.py", "INEEDGEAR"), ("main_dev.py", "INEEDGEAR-DEV")):
-        command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile", "--windowed",
-                   "--name", name, "--add-data", "addon;addon"]
-        if entry == "main.py":
-            command.extend(["--exclude-module", "developer", "--exclude-module", "main_dev"])
-        command.append(entry)
-        subprocess.run(command, check=True)
-        shutil.copy2(Path("dist") / (name + ".exe"), output / (name + ".exe"))
+    command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile", "--windowed",
+               "--name", "INEEDGEAR", "--add-data", "addon;addon", "main.py"]
+    subprocess.run(command, check=True)
+    shutil.copy2(Path("dist/INEEDGEAR.exe"), output / "INEEDGEAR.exe")
     with zipfile.ZipFile(output / "INEEDGEAR-addon.zip", "w", zipfile.ZIP_DEFLATED) as archive:
         for file in sorted(Path("addon/INEEDGEAR").rglob("*")):
             if file.is_file():
                 archive.write(file, file.relative_to("addon").as_posix())
     files = {}
-    for name in ("INEEDGEAR.exe", "INEEDGEAR-DEV.exe", "INEEDGEAR-addon.zip"):
+    for name in ("INEEDGEAR.exe", "INEEDGEAR-addon.zip"):
         file = output / name
         files[name] = {"size": file.stat().st_size, "sha256": hashlib.sha256(file.read_bytes()).hexdigest()}
     (output / "manifest.json").write_text(json.dumps(

@@ -3,15 +3,9 @@
 from pathlib import Path
 import subprocess
 import tempfile
-from PyInstaller.archive.readers import CArchiveReader
 
 
-for name in ("INEEDGEAR.exe", "INEEDGEAR-DEV.exe"):
-    archive = CArchiveReader(str(Path("release", name)))
-    embedded = next(key for key in archive.toc if key.lower().endswith(".pyz"))
-    modules = archive.open_embedded_archive(embedded).toc
-    if ("developer" in modules) != (name == "INEEDGEAR-DEV.exe"):
-        raise RuntimeError("Неверный состав модулей в сборке: " + name)
+for name in ("INEEDGEAR.exe",):
     with tempfile.TemporaryDirectory() as folder:
         marker = Path(folder) / "успех.txt"
         process = subprocess.run([str(Path("release", name).resolve()), "--smoke-test", str(marker)], timeout=90)

@@ -73,11 +73,10 @@ def enable_paste(root):
 # ==========================================================
 from pathlib import Path
 from queue import Queue, Empty
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox
 import updates
 from version import VERSION
 
-IS_DEV = False
 BASE_DIR = str(Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)))
 DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "INEEDGEAR"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -259,7 +258,7 @@ def do_update(settings, log_fn):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(f"I NEED GEAR {VERSION}" + (" [DEV]" if IS_DEV else ""))
+        self.title(f"I NEED GEAR {VERSION}")
         self.geometry("460x620")
         self.resizable(False, False)
 
@@ -311,9 +310,6 @@ class App(tk.Tk):
 
         ttk.Button(self, text="Настройки", command=self.open_settings, width=28)\
             .pack(pady=4, ipady=5)
-
-        if IS_DEV:
-            ttk.Button(self, text="Опубликовать обновление", command=self.on_publish, width=28).pack(pady=4, ipady=5)
 
         self.log_box = tk.Text(
             self, height=9, width=46, state="disabled", wrap="word",
@@ -391,22 +387,13 @@ class App(tk.Tk):
                 return
             # Обработчик очереди освободит флаг занятости перед запуском скачивания.
             self.after(100, lambda: self._work(
-                lambda: updates.prepare_update(release, folder, IS_DEV, self.thread_log),
+                lambda: updates.prepare_update(release, folder, self.thread_log),
                 self._launch_update))
         self._work(lambda: updates.latest_release(VERSION), ready)
 
     def _launch_update(self, plan):
         updates.launch_helper(plan)
         self.destroy()
-
-    def on_publish(self):
-        if not IS_DEV:
-            return
-        version = simpledialog.askstring("Публикация", "Версия нового релиза (например, 1.0.1):")
-        if not version:
-            return
-        from developer import publish_release
-        self._work(lambda: publish_release(version.strip(), self.thread_log))
 
     def open_settings(self):
         SettingsWindow(self, self.settings, self._on_settings_saved)

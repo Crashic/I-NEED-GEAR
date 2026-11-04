@@ -54,7 +54,7 @@ def latest_release(current):
     if version_tuple(version) <= version_tuple(current):
         return None
     tag = "v" + version.removeprefix("v")
-    names = ("INEEDGEAR.exe", "INEEDGEAR-DEV.exe", "INEEDGEAR-addon.zip")
+    names = ("INEEDGEAR.exe", "INEEDGEAR-addon.zip")
     if not isinstance(manifest.get("files"), dict) or any(name not in manifest["files"] for name in names):
         raise ValueError("В манифесте отсутствуют файлы обновления.")
     # После определения версии все загрузки привязаны к одному релизу.
@@ -119,7 +119,7 @@ def extract_addon(archive, destination):
     return addon
 
 
-def prepare_update(release, addons_folder, is_dev, log):
+def prepare_update(release, addons_folder, log):
     manifest = read_json(asset_url(release, "manifest.json"))
     if manifest.get("schema") != 1 or version_tuple(manifest.get("version")) != version_tuple(release["tag_name"]):
         raise ValueError("Манифест не соответствует релизу.")
@@ -127,7 +127,7 @@ def prepare_update(release, addons_folder, is_dev, log):
     if not folder.is_dir():
         raise ValueError("Папка AddOns не найдена.")
     root = Path(tempfile.mkdtemp(prefix="ineedgear-update-"))
-    executable_name = "INEEDGEAR-DEV.exe" if is_dev else "INEEDGEAR.exe"
+    executable_name = "INEEDGEAR.exe"
     try:
         for name in (executable_name, "INEEDGEAR-addon.zip"):
             metadata = manifest["files"][name]
