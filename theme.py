@@ -27,6 +27,7 @@ def apply_dark_theme(root):
                     padding=(12, 8), borderwidth=2, relief="raised")
     style.map("TButton", background=[("disabled", "#29231c"), ("pressed", "#45120f"), ("active", "#8b2b20")],
               foreground=[("disabled", DARK_FG_DIM), ("active", "#ffe5a0")])
+    style.configure("Compact.TButton", padding=(6, 4), font=("Segoe UI", 9))
     style.configure("TEntry", fieldbackground=DARK_ENTRY, foreground=DARK_FG,
                     bordercolor=DARK_BORDER, insertcolor=DARK_FG, padding=5)
     style.configure("Vertical.TScrollbar", background=DARK_BORDER, arrowcolor=DARK_ACCENT,

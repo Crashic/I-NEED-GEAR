@@ -223,7 +223,7 @@ class App(tk.Tk):
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Crashic.INEEDGEAR.Desktop.2")
         super().__init__()
         self.title(f"I NEED GEAR {VERSION}")
-        self.geometry("900x640")
+        self.geometry("450x480")
         self.resizable(False, False)
 
         apply_dark_theme(self)
@@ -257,67 +257,76 @@ class App(tk.Tk):
             pass
 
     def _build_main(self):
-        shell = tk.Frame(self, bg=DARK_BG, highlightbackground=DARK_BORDER, highlightthickness=2)
-        shell.pack(fill="both", expand=True, padx=10, pady=10)
-        header = tk.Frame(shell, bg=DARK_BG2, height=76)
+        shell = tk.Frame(self, bg=DARK_BG, highlightbackground=DARK_BORDER, highlightthickness=1)
+        shell.pack(fill="both", expand=True, padx=5, pady=5)
+        header = tk.Frame(shell, bg=DARK_BG2, height=46)
         header.pack(fill="x")
         header.pack_propagate(False)
-        icon_path = Path(BASE_DIR) / "assets" / "icon.png"
-        if icon_path.exists():
-            self.brand_icon = tk.PhotoImage(file=str(icon_path)).subsample(8, 8)
-            tk.Label(header, image=self.brand_icon, bg=DARK_BG2).pack(side="left", padx=(16, 12))
-        tk.Label(header, text="I NEED GEAR", font=("Georgia", 20, "bold"),
+        self.brand_icon = tk.PhotoImage(file=str(Path(BASE_DIR) / "assets" / "icon.png")).subsample(16, 16)
+        tk.Label(header, image=self.brand_icon, bg=DARK_BG2).pack(side="left", padx=(8, 7))
+        tk.Label(header, text="I NEED GEAR", font=("Georgia", 12, "bold"),
                  fg=DARK_ACCENT, bg=DARK_BG2).pack(side="left")
-        tk.Button(header, text=f"Версия {VERSION}  ⓘ", command=self.show_changelog,
+        tk.Button(header, text=f"v{VERSION} ⓘ", command=self.show_changelog,
                   fg=DARK_ACCENT, bg=DARK_BG2, activebackground=DARK_BG2,
                   activeforeground="#ffe3a0", bd=0, cursor="hand2",
-                  font=("Segoe UI", 9, "underline")).pack(side="right", padx=20)
+                  font=("Segoe UI", 8, "underline")).pack(side="right", padx=9)
         tk.Frame(shell, bg=DARK_BORDER, height=1).pack(fill="x")
         body = tk.Frame(shell, bg=DARK_BG)
         body.pack(fill="both", expand=True)
-        sidebar = tk.Frame(body, bg=DARK_BG2, width=192)
+        sidebar = tk.Frame(body, bg=DARK_BG2, width=106)
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
-        tk.Label(sidebar, text="СНАРЯЖЕНИЕ", fg=DARK_FG_DIM, bg=DARK_BG2,
-                 font=("Segoe UI", 9, "bold"), anchor="w").pack(fill="x", padx=18, pady=(22, 12))
+        tk.Label(sidebar, text="РАЗДЕЛЫ", fg=DARK_FG_DIM, bg=DARK_BG2,
+                 font=("Segoe UI", 8), anchor="w").pack(fill="x", padx=9, pady=(12, 6))
         self.nav_buttons = {}
-        for key, text in (("home", "Обзор"), ("gear", "Аддон"), ("updates", "Обновления")):
+        for key, text in (("home", "Обзор"), ("gear", "Аддон"), ("updates", "Обновления"), ("settings", "Настройки")):
             button = tk.Button(sidebar, text=text, anchor="w", bd=0, relief="flat",
                                bg=DARK_BG2, fg=DARK_ACCENT, activebackground="#44331d",
-                               activeforeground="#ffe3a0", font=("Segoe UI", 11), padx=18, pady=10,
+                               activeforeground="#ffe3a0", font=("Segoe UI", 9), padx=8, pady=7,
                                cursor="hand2", command=lambda page=key: self._select_page(page))
-            button.pack(fill="x", padx=5, pady=2)
+            button.pack(fill="x", padx=3, pady=1)
             self.nav_buttons[key] = button
-        tk.Frame(sidebar, bg=DARK_BORDER, height=1).pack(fill="x", padx=16, pady=20)
-        tk.Button(sidebar, text="Настройки", command=self.open_settings, anchor="w", bd=0,
-                  bg=DARK_BG2, fg=DARK_ACCENT, activebackground="#44331d", activeforeground="#ffe3a0",
-                  font=("Segoe UI", 11), padx=18, pady=10, cursor="hand2").pack(fill="x", padx=5)
+        tk.Frame(sidebar, bg=DARK_BORDER, height=1).pack(fill="x", padx=8, pady=10)
         self.close_to_tray = tk.BooleanVar(value=self.settings.get("close_to_tray", False))
-        tk.Checkbutton(sidebar, text="Закрывать в трей", variable=self.close_to_tray,
+        self.check_off = tk.PhotoImage(file=str(Path(BASE_DIR) / "assets" / "check-off.png"))
+        self.check_on = tk.PhotoImage(file=str(Path(BASE_DIR) / "assets" / "check-on.png"))
+        tk.Checkbutton(sidebar, text="Закрывать\nв трей", variable=self.close_to_tray,
+                       image=self.check_off, selectimage=self.check_on, compound="left", indicatoron=False,
+                       bd=0, highlightthickness=0, relief="flat",
                        command=self._tray_setting_changed, bg=DARK_BG2, fg=DARK_FG_DIM,
                        activebackground=DARK_BG2, activeforeground=DARK_ACCENT,
-                       selectcolor=DARK_ENTRY, font=("Segoe UI", 9), cursor="hand2",
-                       anchor="w").pack(fill="x", padx=14, pady=(8, 0))
-        tk.Label(sidebar, text="WoW Forever\nСнаряжение вашей группы", justify="left", anchor="w",
-                 bg=DARK_BG2, fg=DARK_FG_DIM, font=("Segoe UI", 9)).pack(side="bottom", padx=18, pady=20)
+                       selectcolor=DARK_BG2, font=("Segoe UI", 8), cursor="hand2",
+                       justify="left", anchor="w").pack(fill="x", padx=4)
+        tk.Label(sidebar, text="WoW Forever", bg=DARK_BG2, fg=DARK_FG_DIM,
+                 font=("Segoe UI", 8)).pack(side="bottom", pady=10)
         tk.Frame(body, bg=DARK_BORDER, width=1).pack(side="left", fill="y")
         content = tk.Frame(body, bg=DARK_BG)
-        content.pack(side="left", fill="both", expand=True, padx=24, pady=20)
-        self.page_title = tk.Label(content, anchor="w", font=("Georgia", 18), fg=DARK_FG, bg=DARK_BG)
+        content.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        self.page_title = tk.Label(content, anchor="w", font=("Georgia", 13), fg=DARK_FG, bg=DARK_BG)
         self.page_title.pack(fill="x")
-        tk.Frame(content, bg=DARK_BORDER, height=1).pack(fill="x", pady=(12, 16))
-        self.page_hint = tk.Label(content, anchor="nw", justify="left", wraplength=570,
-                                  fg=DARK_FG_DIM, bg=DARK_BG, font=("Segoe UI", 10), height=3)
-        self.page_hint.pack(fill="x")
-        self.page_action = ttk.Button(content)
-        self.page_action.pack(anchor="w", pady=(8, 20))
+        tk.Frame(content, bg=DARK_BORDER, height=1).pack(fill="x", pady=(6, 9))
+        self.page_area = tk.Frame(content, bg=DARK_BG, height=242)
+        self.page_area.pack(fill="x")
+        self.page_area.pack_propagate(False)
+        self.operation_panel = tk.Frame(self.page_area, bg=DARK_BG)
+        self.page_hint = tk.Label(self.operation_panel, anchor="nw", justify="left", wraplength=285,
+                                  fg=DARK_FG_DIM, bg=DARK_BG, font=("Segoe UI", 9))
+        self.page_hint.pack(fill="x", pady=(2, 14))
+        action_row = tk.Frame(self.operation_panel, bg=DARK_BG)
+        action_row.pack(fill="x")
+        self.action_label = tk.Label(action_row, fg=DARK_ACCENT, bg=DARK_BG,
+                                     anchor="w", font=("Segoe UI", 9))
+        self.action_label.pack(side="left")
+        self.page_action = ttk.Button(action_row, style="Compact.TButton")
+        self.page_action.pack(side="right")
+        self.settings_panel = SettingsPanel(self.page_area, self.settings, self._on_settings_saved)
         tk.Label(content, text="Журнал событий", anchor="w", fg=DARK_ACCENT,
-                 bg=DARK_BG, font=("Segoe UI", 10, "bold")).pack(fill="x", pady=(6, 8))
+                 bg=DARK_BG, font=("Segoe UI", 9)).pack(fill="x", pady=(8, 5))
         journal = tk.Frame(content, bg=DARK_ENTRY, highlightbackground=DARK_BORDER, highlightthickness=1)
         journal.pack(fill="both", expand=True)
         self.log_box = tk.Text(journal, state="disabled", wrap="word", bg=DARK_ENTRY,
                                fg=DARK_FG, insertbackground=DARK_FG, relief="flat", bd=0,
-                               padx=12, pady=10, font=("Segoe UI", 10), height=8, width=45)
+                               padx=6, pady=5, font=("Segoe UI", 8), height=5, width=1)
         scrollbar = ttk.Scrollbar(journal, command=self.log_box.yview)
         scrollbar.pack(side="right", fill="y")
         self.log_box.configure(yscrollcommand=scrollbar.set)
@@ -325,18 +334,28 @@ class App(tk.Tk):
         self._select_page("home")
 
     def _select_page(self, page):
-        pages = {
-            "home": ("Снаряжение вашей группы", "Сохраните снаряжение в игре, затем закройте WoW.\nСинхронизация отправит ваши данные и загрузит данные друзей.",
-                     "Синхронизировать снаряжение", self.on_update),
-            "gear": ("Установка аддона", "Укажите папку Interface\\AddOns в настройках.\nПосле установки откройте окно в игре командой /ing.",
-                     "Установить аддон", self.on_install),
-            "updates": ("Обновления", "Программа и аддон получают обновления из GitHub Releases.\nПеред установкой новой версии полностью закройте WoW.",
-                        "Проверить обновление", self.on_update_addon),
-        }
-        title, hint, action, command = pages[page]
-        self.page_title.configure(text=title)
-        self.page_hint.configure(text=hint)
-        self.page_action.configure(text=action, command=command)
+        self.operation_panel.pack_forget()
+        self.settings_panel.pack_forget()
+        if page == "settings":
+            self.page_area.configure(height=242)
+            self.page_title.configure(text="Настройки")
+            self.settings_panel.pack(fill="both", expand=True)
+        else:
+            pages = {
+                "home": ("Снаряжение", "Сохраните снаряжение в игре и закройте WoW. Затем отправьте свои данные и получите данные друзей.",
+                         "Обмен данными", "Синхронизировать", self.on_update),
+                "gear": ("Аддон", "Выберите папку AddOns в настройках и установите аддон. В игре окно открывается командой /ing.",
+                         "Файлы аддона", "Установить", self.on_install),
+                "updates": ("Обновления", "Обновляются программа и аддон. Перед установкой новой версии полностью закройте WoW.",
+                            "Новая версия", "Проверить", self.on_update_addon),
+            }
+            self.page_area.configure(height=120)
+            title, hint, label, action, command = pages[page]
+            self.page_title.configure(text=title)
+            self.page_hint.configure(text=hint)
+            self.action_label.configure(text=label)
+            self.page_action.configure(text=action, command=command)
+            self.operation_panel.pack(fill="both", expand=True)
         for key, button in self.nav_buttons.items():
             button.configure(bg="#44331d" if key == page else DARK_BG2,
                              fg="#ffe3a0" if key == page else DARK_ACCENT)
@@ -499,7 +518,7 @@ class App(tk.Tk):
         window = tk.Toplevel(self)
         self.changelog_window = window
         window.title("История изменений — I NEED GEAR")
-        window.geometry("560x460")
+        window.geometry("420x400")
         window.resizable(False, False)
         window.transient(self)
         window.configure(bg=DARK_BG)
@@ -524,10 +543,10 @@ class App(tk.Tk):
         ttk.Button(window, text="Закрыть", command=window.destroy).pack(anchor="e", padx=20, pady=14)
         window.bind("<Escape>", lambda event: window.destroy())
         window.update_idletasks()
-        restore_position(window, {"x": self.winfo_rootx()+150, "y": self.winfo_rooty()+60})
+        restore_position(window, {"x": self.winfo_rootx()+15, "y": self.winfo_rooty()+60})
 
     def open_settings(self):
-        SettingsWindow(self, self.settings, self._on_settings_saved)
+        self._select_page("settings")
 
     def _on_settings_saved(self, s):
         s["window_position"] = self.settings.get("window_position")
@@ -539,105 +558,51 @@ class App(tk.Tk):
 # ==========================================================
 # Окно настроек
 # ==========================================================
-class SettingsWindow(tk.Toplevel):
+class SettingsPanel(tk.Frame):
     def __init__(self, parent, settings, on_save):
-        super().__init__(parent)
-        apply_dark_theme(self)
-        self.title("Настройки")
-        self.geometry("580x640")
-        self.resizable(False, False)
-        self.transient(parent)
-        self.grab_set()
-
-        self.iconbitmap(str(Path(BASE_DIR) / "assets" / "icon.ico")) if sys.platform.startswith("win") else None
+        super().__init__(parent, bg=DARK_BG)
         self.settings = settings.copy()
         self.on_save = on_save
-        self._build()
+        self.columnconfigure(1, weight=1)
+        self.vars = {}
+        rows = (("addons_folder", "AddOns", True), ("local_folder", "Данные", True),
+                ("local_filename", "Файл", False), ("player_key", "Персонаж", False))
+        for row, (key, label, browse) in enumerate(rows):
+            tk.Label(self, text=label, anchor="w", bg=DARK_BG, fg=DARK_ACCENT,
+                     font=("Segoe UI", 9)).grid(row=row, column=0, sticky="w", padx=(0, 7), pady=5)
+            variable = tk.StringVar(value=settings.get(key, ""))
+            self.vars[key] = variable
+            ttk.Entry(self, textvariable=variable, width=10, font=("Segoe UI", 9)).grid(
+                row=row, column=1, columnspan=1 if browse else 2, sticky="ew", pady=5)
+            if browse:
+                ttk.Button(self, text="…", width=2, style="Compact.TButton",
+                           command=lambda field=key: self.pick_folder(field)).grid(row=row, column=2, padx=(4,0), pady=5)
+        tk.Label(self, text="Данные — папка SavedVariables.\nПерсонаж: Ник-Реалм; пусто — автоматически.",
+                 bg=DARK_BG, fg=DARK_FG_DIM, justify="left", anchor="w", wraplength=285,
+                 font=("Segoe UI", 8)).grid(row=4, column=0, columnspan=3, sticky="w", pady=(5, 10))
+        buttons = tk.Frame(self, bg=DARK_BG)
+        buttons.grid(row=5, column=0, columnspan=3, sticky="e")
+        ttk.Button(buttons, text="Сбросить", style="Compact.TButton", command=self.reset).pack(side="left", padx=(0,6))
+        ttk.Button(buttons, text="Сохранить", style="Compact.TButton", command=self.save).pack(side="left")
 
-    def _build(self):
-        pad = {"padx": 12, "pady": 6}
-
-        # --- Папка AddOns ---
-        f0 = ttk.LabelFrame(self, text="Папка AddOns игры")
-        f0.pack(fill="x", **pad)
-
-        self.var_addons = tk.StringVar(value=self.settings.get("addons_folder", ""))
-        ttk.Entry(f0, textvariable=self.var_addons, width=42)\
-            .grid(row=0, column=0, padx=6, pady=6, sticky="we")
-        ttk.Button(f0, text="Обзор...", command=self.pick_addons)\
-            .grid(row=0, column=1, padx=6, pady=6)
-
-        tk.Label(
-            f0,
-            text="Пример: C:\\Games\\WoW Forever\\_retail_\\Interface\\AddOns",
-            justify="left", anchor="w", fg=DARK_FG_DIM, bg=DARK_BG,
-            font=("Segoe UI", 8)
-        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=6, pady=(0, 4))
-
-        # --- Папка SavedVariables ---
-        f1 = ttk.LabelFrame(self, text="Папка SavedVariables игры")
-        f1.pack(fill="x", **pad)
-
-        self.var_folder = tk.StringVar(value=self.settings["local_folder"])
-        ttk.Entry(f1, textvariable=self.var_folder, width=42)\
-            .grid(row=0, column=0, padx=6, pady=6, sticky="we")
-        ttk.Button(f1, text="Обзор...", command=self.pick_folder)\
-            .grid(row=0, column=1, padx=6, pady=6)
-
-        ttk.Label(f1, text="Имя файла аддона:").grid(row=1, column=0, sticky="w", padx=6)
-        self.var_local_file = tk.StringVar(value=self.settings["local_filename"])
-        ttk.Entry(f1, textvariable=self.var_local_file, width=36)\
-            .grid(row=2, column=0, columnspan=2, sticky="we", padx=6, pady=(0, 6))
-
-        # --- Идентификация ---
-        f3 = ttk.LabelFrame(self, text="Идентификация (необязательно)")
-        f3.pack(fill="x", **pad)
-
-        ttk.Label(f3, text='Ключ персонажа "Ник-Реалм" (если пусто — возьмётся из файла):')\
-            .grid(row=0, column=0, columnspan=2, sticky="w", padx=6, pady=3)
-        self.var_player = tk.StringVar(value=self.settings.get("player_key", ""))
-        ttk.Entry(f3, textvariable=self.var_player, width=42)\
-            .grid(row=1, column=0, columnspan=2, sticky="we", padx=6, pady=(0, 6))
-
-        # --- Подсказка ---
-        f_hint = ttk.LabelFrame(self, text="Подсказка: как найти папки")
-        f_hint.pack(fill="x", **pad)
-
-        hint_text = (
-            "AddOns: <игра>\\_retail_\\Interface\\AddOns\n"
-            "SavedVariables: <игра>\\_retail_\\WTF\\Account\\<АККАУНТ>\\SavedVariables"
-        )
-
-        tk.Label(
-            f_hint, text=hint_text, justify="left", anchor="w",
-            fg=DARK_FG_DIM, bg=DARK_BG,
-            font=("Segoe UI", 8), wraplength=400
-        ).pack(side="left", fill="x", expand=True, padx=6, pady=6)
-
-        # --- Кнопки ---
-        btns = ttk.Frame(self)
-        btns.pack(fill="x", pady=10)
-        ttk.Button(btns, text="Сохранить", command=self.save).pack(side="right", padx=6)
-        ttk.Button(btns, text="Отмена", command=self.destroy).pack(side="right", padx=6)
-
-    def pick_addons(self):
-        folder = filedialog.askdirectory(title="Выберите папку Interface\\AddOns")
+    def pick_folder(self, key):
+        title = "Выберите папку Interface\\AddOns" if key == "addons_folder" else "Выберите папку SavedVariables"
+        folder = filedialog.askdirectory(parent=self, title=title, initialdir=self.vars[key].get() or None)
         if folder:
-            self.var_addons.set(folder)
+            self.vars[key].set(folder)
 
-    def pick_folder(self):
-        folder = filedialog.askdirectory(title="Выберите папку SavedVariables")
-        if folder:
-            self.var_folder.set(folder)
+    def reset(self):
+        for key, variable in self.vars.items():
+            variable.set(self.settings.get(key, ""))
 
     def save(self):
-        s = self.settings.copy()
-        s["addons_folder"] = self.var_addons.get().strip()
-        s["local_folder"] = self.var_folder.get().strip()
-        s["local_filename"] = self.var_local_file.get().strip() or "INEEDGEARDB.lua"
-        s["player_key"] = self.var_player.get().strip()
-        self.on_save(s)
-        self.destroy()
+        settings = self.settings.copy()
+        settings.update({key: variable.get().strip() for key, variable in self.vars.items()})
+        settings["local_filename"] = settings["local_filename"] or "INEEDGEARDB.lua"
+        self.on_save(settings)
+        self.settings = settings.copy()
+        self.reset()
+
 
 def run():
     if len(sys.argv) == 3 and sys.argv[1] == "--apply-update":
@@ -646,13 +611,9 @@ def run():
         app = App()
         app.withdraw()
         app.update_idletasks()
-        for page in ("gear", "updates", "home"):
+        for page in ("gear", "updates", "settings", "home"):
             app._select_page(page)
             app.update_idletasks()
-        settings = SettingsWindow(app, app.settings, lambda value: None)
-        settings.withdraw()
-        settings.update_idletasks()
-        settings.destroy()
         app.show_changelog()
         app.changelog_window.update_idletasks()
         app.changelog_window.destroy()
