@@ -1,0 +1,50 @@
+name: Сборка и публикация
+run-name: Публикация версии ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Версия в формате 1.0.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: публикация
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Проверка, сборка Windows и публикация
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Загрузка исходников
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Установка Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Установка зависимостей
+        run: python -m pip install -r requirements.txt
+      - name: Проверка кода
+        run: python -m unittest discover -s tests -v
+      - name: Подготовка и сборка двух версий
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: python scripts/build_release.py
+      - name: Проверка запуска собранных приложений
+        run: python scripts/smoke_test.py
+      - name: Публикация готового релиза
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: python scripts/publish_release.py
+

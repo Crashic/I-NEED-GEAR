@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: I NEED GEAR
+## Notes: Ручной обмен снаряжением и вишлистами
+## Author: You
+## Version: 0.1
+## SavedVariables: INEEDGEARDB
+
+INEEDGEAR.lua
