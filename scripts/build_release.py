@@ -27,7 +27,7 @@ def build():
     output = Path("release")
     output.mkdir(exist_ok=True)
     command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile", "--windowed",
-               "--name", "INEEDGEAR", "--icon", "assets/icon.ico",
+               "--name", "INEEDGEAR", "--icon", "assets/icon.ico", "--hidden-import", "pystray._win32",
                "--add-data", "addon;addon", "--add-data", "assets;assets", "main.py"]
     subprocess.run(command, check=True)
     shutil.copy2(Path("dist/INEEDGEAR.exe"), output / "INEEDGEAR.exe")

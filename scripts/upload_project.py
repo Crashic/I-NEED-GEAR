@@ -47,7 +47,7 @@ def upload():
     commit = request("/git/commits/" + head)
     paths = [Path(name) for name in (
         ".gitignore", "README.md", "requirements.txt", "version.py", "main.py",
-        "updates.py", "theme.py", "saved_variables.py", ".github/workflows/release.yml")]
+        "updates.py", "theme.py", "changelog.py", "window_state.py", "saved_variables.py", ".github/workflows/release.yml")]
     for directory in ("addon", "assets", "scripts", "tests"):
         paths.extend(file.relative_to(ROOT) for file in (ROOT / directory).rglob("*")
                      if file.is_file() and "__pycache__" not in file.parts)

@@ -30,6 +30,8 @@ from queue import Queue, Empty
 from tkinter import messagebox
 import updates
 from version import VERSION
+from changelog import HISTORY
+from window_state import restore_position, window_rectangle
 
 BASE_DIR = str(Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)))
 DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "INEEDGEAR"
@@ -47,6 +49,8 @@ DEFAULT_SETTINGS = {
     "local_folder": "",
     "local_filename": "INEEDGEARDB.lua",
     "player_key": "",
+    "close_to_tray": False,
+    "window_position": None,
 }
 
 def load_settings():
@@ -62,8 +66,10 @@ def load_settings():
     return DEFAULT_SETTINGS.copy()
 
 def save_settings(s):
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+    temporary = SETTINGS_FILE + ".tmp"
+    with open(temporary, "w", encoding="utf-8") as f:
         json.dump(s, f, ensure_ascii=False, indent=2)
+    os.replace(temporary, SETTINGS_FILE)
 
 # ==========================================================
 # Тексты файлов аддона (вшиты в программу)
@@ -223,8 +229,14 @@ class App(tk.Tk):
         self.events = Queue()
         self.busy = False
         self.settings = load_settings()
+        self.tray_icon = None
+        self.changelog_window = None
+        self.position_timer = None
         self._set_icon()
         self._build_main()
+        restore_position(self, self.settings.get("window_position"))
+        self.bind("<Configure>", self._position_changed)
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.after(100, self._poll_events)
         self.after(1500, lambda: self.check_update(silent=True))
 
@@ -253,7 +265,10 @@ class App(tk.Tk):
             tk.Label(header, image=self.brand_icon, bg=DARK_BG2).pack(side="left", padx=(16, 12))
         tk.Label(header, text="I NEED GEAR", font=("Georgia", 20, "bold"),
                  fg=DARK_ACCENT, bg=DARK_BG2).pack(side="left")
-        tk.Label(header, text=f"Версия {VERSION}", fg=DARK_FG_DIM, bg=DARK_BG2).pack(side="right", padx=20)
+        tk.Button(header, text=f"Версия {VERSION}  ⓘ", command=self.show_changelog,
+                  fg=DARK_ACCENT, bg=DARK_BG2, activebackground=DARK_BG2,
+                  activeforeground="#ffe3a0", bd=0, cursor="hand2",
+                  font=("Segoe UI", 9, "underline")).pack(side="right", padx=20)
         tk.Frame(shell, bg=DARK_BORDER, height=1).pack(fill="x")
         body = tk.Frame(shell, bg=DARK_BG)
         body.pack(fill="both", expand=True)
@@ -274,6 +289,12 @@ class App(tk.Tk):
         tk.Button(sidebar, text="Настройки", command=self.open_settings, anchor="w", bd=0,
                   bg=DARK_BG2, fg=DARK_ACCENT, activebackground="#44331d", activeforeground="#ffe3a0",
                   font=("Segoe UI", 11), padx=18, pady=10, cursor="hand2").pack(fill="x", padx=5)
+        self.close_to_tray = tk.BooleanVar(value=self.settings.get("close_to_tray", False))
+        tk.Checkbutton(sidebar, text="Закрывать в трей", variable=self.close_to_tray,
+                       command=self._tray_setting_changed, bg=DARK_BG2, fg=DARK_FG_DIM,
+                       activebackground=DARK_BG2, activeforeground=DARK_ACCENT,
+                       selectcolor=DARK_ENTRY, font=("Segoe UI", 9), cursor="hand2",
+                       anchor="w").pack(fill="x", padx=14, pady=(8, 0))
         tk.Label(sidebar, text="WoW Forever\nСнаряжение вашей группы", justify="left", anchor="w",
                  bg=DARK_BG2, fg=DARK_FG_DIM, font=("Segoe UI", 9)).pack(side="bottom", padx=18, pady=20)
         tk.Frame(body, bg=DARK_BORDER, width=1).pack(side="left", fill="y")
@@ -391,12 +412,123 @@ class App(tk.Tk):
 
     def _launch_update(self, plan):
         updates.launch_helper(plan)
+        self._exit_app()
+
+    def _position_changed(self, event):
+        if event.widget is not self or self.state() != "normal":
+            return
+        if self.position_timer:
+            self.after_cancel(self.position_timer)
+        self.position_timer = self.after(500, self._save_position)
+
+    def _save_position(self):
+        self.position_timer = None
+        if self.state() != "normal":
+            return
+        try:
+            x, y, _, _ = window_rectangle(self)
+            self.settings["window_position"] = {"x": x, "y": y}
+            save_settings(self.settings)
+        except (OSError, tk.TclError) as exc:
+            self.log(f"Не удалось сохранить положение окна: {exc}")
+
+    def _tray_setting_changed(self):
+        self.settings["close_to_tray"] = self.close_to_tray.get()
+        save_settings(self.settings)
+        self.log("Закрытие в трей включено." if self.close_to_tray.get() else "Крестик полностью закрывает программу.")
+
+    def _on_close(self):
+        self._save_position()
+        if not self.close_to_tray.get():
+            self._exit_app()
+            return
+        if self.tray_icon is not None:
+            if self.tray_icon.visible:
+                self.withdraw()
+            return
+        try:
+            import pystray
+            from PIL import Image
+            image = Image.open(Path(BASE_DIR) / "assets" / "icon.png").copy()
+            icon = pystray.Icon("INEEDGEAR", image, "I NEED GEAR", menu=pystray.Menu(
+                pystray.MenuItem("Открыть", lambda icon, item: self.events.put((self._show_from_tray, ())), default=True),
+                pystray.MenuItem("Выйти", lambda icon, item: self.events.put((self._exit_app, ())))
+            ))
+            def run_tray():
+                try:
+                    def ready(icon):
+                        icon.visible = True
+                        self.events.put((self.withdraw, ()))
+                    icon.run(setup=ready)
+                except Exception as exc:
+                    self.events.put((self._tray_failed, (str(exc),)))
+            self.tray_icon = icon
+            threading.Thread(target=run_tray, daemon=True).start()
+        except Exception as exc:
+            self._tray_failed(str(exc))
+
+    def _tray_failed(self, message):
+        if self.tray_icon:
+            self.tray_icon.stop()
+        self.tray_icon = None
+        self.deiconify()
+        self.log(f"Не удалось открыть значок в трее: {message}")
+
+    def _show_from_tray(self):
+        self.deiconify()
+        self.lift()
+        self.focus_force()
+
+    def _exit_app(self):
+        self._save_position()
+        for timer in self.tk.call("after", "info"):
+            self.after_cancel(timer)
+        if self.tray_icon:
+            self.tray_icon.stop()
+            self.tray_icon = None
         self.destroy()
+
+    def show_changelog(self):
+        if self.changelog_window is not None and self.changelog_window.winfo_exists():
+            self.changelog_window.lift()
+            self.changelog_window.focus_set()
+            return
+        window = tk.Toplevel(self)
+        self.changelog_window = window
+        window.title("История изменений — I NEED GEAR")
+        window.geometry("560x460")
+        window.resizable(False, False)
+        window.transient(self)
+        window.configure(bg=DARK_BG)
+        if sys.platform.startswith("win"):
+            window.iconbitmap(str(Path(BASE_DIR) / "assets" / "icon.ico"))
+        tk.Label(window, text="Что нового", bg=DARK_BG, fg=DARK_ACCENT,
+                 font=("Georgia", 18)).pack(anchor="w", padx=20, pady=(18, 12))
+        area = tk.Frame(window, bg=DARK_ENTRY, highlightbackground=DARK_BORDER, highlightthickness=1)
+        area.pack(fill="both", expand=True, padx=20)
+        text = tk.Text(area, wrap="word", bg=DARK_ENTRY, fg=DARK_FG, bd=0,
+                       padx=12, pady=10, font=("Segoe UI", 10), cursor="arrow")
+        scrollbar = ttk.Scrollbar(area, command=text.yview)
+        scrollbar.pack(side="right", fill="y")
+        text.configure(yscrollcommand=scrollbar.set)
+        text.pack(fill="both", expand=True)
+        text.tag_configure("version", foreground=DARK_ACCENT, font=("Segoe UI", 11, "bold"), spacing1=10, spacing3=5)
+        for version, notes in HISTORY:
+            text.insert("end", f"Версия {version}\n", "version")
+            for note in notes:
+                text.insert("end", f"• {note}\n")
+        text.configure(state="disabled")
+        ttk.Button(window, text="Закрыть", command=window.destroy).pack(anchor="e", padx=20, pady=14)
+        window.bind("<Escape>", lambda event: window.destroy())
+        window.update_idletasks()
+        restore_position(window, {"x": self.winfo_rootx()+150, "y": self.winfo_rooty()+60})
 
     def open_settings(self):
         SettingsWindow(self, self.settings, self._on_settings_saved)
 
     def _on_settings_saved(self, s):
+        s["window_position"] = self.settings.get("window_position")
+        s["close_to_tray"] = self.close_to_tray.get()
         self.settings = s
         save_settings(s)
         self.log("💾 Настройки сохранены.")
@@ -518,6 +650,9 @@ def run():
         settings.withdraw()
         settings.update_idletasks()
         settings.destroy()
+        app.show_changelog()
+        app.changelog_window.update_idletasks()
+        app.changelog_window.destroy()
         app.destroy()
         Path(sys.argv[2]).write_text("Запуск успешен", encoding="utf-8")
     else:
