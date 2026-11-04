@@ -568,8 +568,11 @@ class SettingsPanel(tk.Frame):
         rows = (("addons_folder", "AddOns", True), ("local_folder", "Данные", True),
                 ("local_filename", "Файл", False), ("player_key", "Персонаж", False))
         for row, (key, label, browse) in enumerate(rows):
-            tk.Label(self, text=label, anchor="w", bg=DARK_BG, fg=DARK_ACCENT,
-                     font=("Segoe UI", 9)).grid(row=row, column=0, sticky="w", padx=(0, 7), pady=5)
+            caption = tk.Label(self, text=label + (" ⓘ" if browse else ""), anchor="w", bg=DARK_BG, fg=DARK_ACCENT,
+                               cursor="hand2" if browse else "", font=("Segoe UI", 9))
+            caption.grid(row=row, column=0, sticky="w", padx=(0, 7), pady=5)
+            if browse:
+                caption.bind("<Button-1>", lambda event: self.show_folder_help())
             variable = tk.StringVar(value=settings.get(key, ""))
             self.vars[key] = variable
             ttk.Entry(self, textvariable=variable, width=10, font=("Segoe UI", 9)).grid(
@@ -577,13 +580,49 @@ class SettingsPanel(tk.Frame):
             if browse:
                 ttk.Button(self, text="…", width=2, style="Compact.TButton",
                            command=lambda field=key: self.pick_folder(field)).grid(row=row, column=2, padx=(4,0), pady=5)
-        tk.Label(self, text="Данные — папка SavedVariables.\nПерсонаж: Ник-Реалм; пусто — автоматически.",
+        tk.Button(self, text="Где найти папки AddOns и SavedVariables?", command=self.show_folder_help,
+                  bg=DARK_BG, fg=DARK_ACCENT, activebackground=DARK_BG, activeforeground="#ffe3a0",
+                  bd=0, padx=0, pady=0, cursor="hand2", font=("Segoe UI", 8, "underline")).grid(
+                      row=4, column=0, columnspan=3, sticky="w", pady=(5, 0))
+        tk.Label(self, text="Персонаж: Ник-Реалм; пусто — автоматически.",
                  bg=DARK_BG, fg=DARK_FG_DIM, justify="left", anchor="w", wraplength=285,
-                 font=("Segoe UI", 8)).grid(row=4, column=0, columnspan=3, sticky="w", pady=(5, 10))
+                 font=("Segoe UI", 8)).grid(row=5, column=0, columnspan=3, sticky="w", pady=(0, 10))
         buttons = tk.Frame(self, bg=DARK_BG)
-        buttons.grid(row=5, column=0, columnspan=3, sticky="e")
+        buttons.grid(row=6, column=0, columnspan=3, sticky="e")
         ttk.Button(buttons, text="Сбросить", style="Compact.TButton", command=self.reset).pack(side="left", padx=(0,6))
         ttk.Button(buttons, text="Сохранить", style="Compact.TButton", command=self.save).pack(side="left")
+
+    def show_folder_help(self):
+        existing = getattr(self, "folder_help", None)
+        if existing is not None and existing.winfo_exists():
+            existing.lift()
+            return
+        window = tk.Toplevel(self)
+        self.folder_help = window
+        window.title("Где найти папки")
+        window.configure(bg=DARK_BG)
+        window.geometry("410x330")
+        window.resizable(False, False)
+        window.transient(self.winfo_toplevel())
+        tk.Label(window, text="Папки WoW Forever", bg=DARK_BG, fg=DARK_ACCENT,
+                 font=("Georgia", 13)).pack(anchor="w", padx=16, pady=(14,10))
+        text = (
+            "AddOns — папка установки аддона:\n"
+            "<игра>\\_forever_\\Interface\\AddOns\n\n"
+            "Данные — настройки аддона вашего аккаунта:\n"
+            "<игра>\\_forever_\\WTF\\Account\\\n"
+            "<АККАУНТ>\\SavedVariables\n\n"
+            "Внутри SavedVariables должен находиться INEEDGEARDB.lua.\n"
+            "Он появится после сохранения снаряжения и выхода из игры.\n\n"
+            "Указывайте конечные папки AddOns и SavedVariables, а не корень игры. "
+            "Если папка клиента называется иначе, используйте её вместо _forever_."
+        )
+        tk.Label(window, text=text, justify="left", anchor="nw", wraplength=375,
+                 bg=DARK_BG, fg=DARK_FG, font=("Segoe UI",9)).pack(fill="both", expand=True, padx=16)
+        ttk.Button(window, text="Понятно", style="Compact.TButton", command=window.destroy).pack(anchor="e", padx=16,pady=12)
+        window.bind("<Escape>", lambda event: window.destroy())
+        root = self.winfo_toplevel()
+        restore_position(window, {"x":root.winfo_rootx()+15,"y":root.winfo_rooty()+40})
 
     def pick_folder(self, key):
         title = "Выберите папку Interface\\AddOns" if key == "addons_folder" else "Выберите папку SavedVariables"
