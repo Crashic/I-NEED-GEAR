@@ -1,6 +1,7 @@
 """Первичная загрузка исходников через API с локальным токеном, без его печати."""
 
 import json
+import base64
 import os
 from pathlib import Path
 import sys
@@ -46,8 +47,8 @@ def upload():
     commit = request("/git/commits/" + head)
     paths = [Path(name) for name in (
         ".gitignore", "README.md", "requirements.txt", "version.py", "main.py",
-        "updates.py", "saved_variables.py", ".github/workflows/release.yml")]
-    for directory in ("addon", "scripts", "tests"):
+        "updates.py", "theme.py", "saved_variables.py", ".github/workflows/release.yml")]
+    for directory in ("addon", "assets", "scripts", "tests"):
         paths.extend(file.relative_to(ROOT) for file in (ROOT / directory).rglob("*")
                      if file.is_file() and "__pycache__" not in file.parts)
     entries = []
@@ -59,6 +60,10 @@ def upload():
         if name in existing:
             entries.append({"path": name, "mode": "100644", "type": "blob", "sha": None})
     for path in sorted(set(paths)):
+        if path.suffix.lower() in (".png", ".ico", ".tga"):
+            blob = request("/git/blobs", {"encoding": "base64", "content": base64.b64encode((ROOT / path).read_bytes()).decode("ascii")}, "POST")
+            entries.append({"path": path.as_posix(), "mode": "100644", "type": "blob", "sha": blob["sha"]})
+            continue
         content = (ROOT / path).read_text(encoding="utf-8")
         # Секреты запрещено загружать даже при случайном добавлении в исходник.
         import re
@@ -66,7 +71,7 @@ def upload():
             raise RuntimeError("В файле обнаружен токен: " + str(path))
         entries.append({"path": path.as_posix(), "mode": "100644", "type": "blob", "content": content})
     tree = request("/git/trees", {"base_tree": commit["tree"]["sha"], "tree": entries}, "POST")
-    created = request("/git/commits", {"message": "Одна общая сборка приложения для всех пользователей",
+    created = request("/git/commits", {"message": "Игровое оформление приложения и аддона, иконка ING",
                       "tree": tree["sha"], "parents": [head]}, "POST")
     if request("/git/ref/heads/" + branch)["object"]["sha"] != head:
         raise RuntimeError("Ветка изменилась во время загрузки. Повторите после проверки изменений.")

@@ -27,7 +27,8 @@ def build():
     output = Path("release")
     output.mkdir(exist_ok=True)
     command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile", "--windowed",
-               "--name", "INEEDGEAR", "--add-data", "addon;addon", "main.py"]
+               "--name", "INEEDGEAR", "--icon", "assets/icon.ico",
+               "--add-data", "addon;addon", "--add-data", "assets;assets", "main.py"]
     subprocess.run(command, check=True)
     shutil.copy2(Path("dist/INEEDGEAR.exe"), output / "INEEDGEAR.exe")
     with zipfile.ZipFile(output / "INEEDGEAR-addon.zip", "w", zipfile.ZIP_DEFLATED) as archive:

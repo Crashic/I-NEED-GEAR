@@ -11,54 +11,8 @@ from datetime import datetime, timezone
 from supabase import create_client
 from saved_variables import own_data, player_key
 
-# ==========================================================
-# Тёмная тема
-# ==========================================================
-DARK_BG      = "#1e1e1e"
-DARK_BG2     = "#252526"
-DARK_FG      = "#d4d4d4"
-DARK_FG_DIM  = "#858585"
-DARK_ACCENT  = "#0e639c"
-DARK_BORDER  = "#3c3c3c"
-DARK_ENTRY   = "#2d2d30"
-
-def apply_dark_theme(root):
-    style = ttk.Style(root)
-    style.theme_use("clam")
-
-    root.configure(bg=DARK_BG)
-    style.configure(".",
-        background=DARK_BG,
-        foreground=DARK_FG,
-        fieldbackground=DARK_ENTRY,
-        bordercolor=DARK_BORDER,
-        focuscolor=DARK_ACCENT,
-        troughcolor=DARK_BG2,
-    )
-
-    style.configure("TFrame", background=DARK_BG)
-    style.configure("TLabelframe", background=DARK_BG, bordercolor=DARK_BORDER)
-    style.configure("TLabelframe.Label", background=DARK_BG, foreground=DARK_FG)
-    style.configure("TLabel", background=DARK_BG, foreground=DARK_FG)
-
-    style.configure("TButton",
-        background=DARK_BG2,
-        foreground=DARK_FG,
-        bordercolor=DARK_BORDER,
-        focuscolor=DARK_ACCENT,
-        padding=(6, 3),
-    )
-    style.map("TButton",
-        background=[("active", DARK_ACCENT), ("pressed", "#0a4d7a")],
-        foreground=[("active", "#ffffff")],
-    )
-
-    style.configure("TEntry",
-        fieldbackground=DARK_ENTRY,
-        foreground=DARK_FG,
-        bordercolor=DARK_BORDER,
-        insertcolor=DARK_FG,
-    )
+from theme import (apply_dark_theme, DARK_BG, DARK_BG2, DARK_FG, DARK_FG_DIM,
+                   DARK_ACCENT, DARK_BORDER, DARK_ENTRY)
 
 def enable_paste(root):
     """Включает Ctrl+V/C/X/A во всех Entry и Text."""
@@ -180,6 +134,7 @@ def install_addon(addons_folder, log_fn):
             f.write(ADDON_TOC)
         with open(os.path.join(target, "INEEDGEAR.lua"), "w", encoding="utf-8") as f:
             f.write(ADDON_LUA)
+        shutil.copy2(ADDON_DIR / "icon.tga", Path(target) / "icon.tga")
         log_fn(f"✅ Аддон установлен в: {target}")
         log_fn("💡 Зайди в игру и набери /ing")
     except PermissionError:
@@ -259,7 +214,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"I NEED GEAR {VERSION}")
-        self.geometry("460x620")
+        self.geometry("900x640")
         self.resizable(False, False)
 
         apply_dark_theme(self)
@@ -274,8 +229,8 @@ class App(tk.Tk):
         self.after(1500, lambda: self.check_update(silent=True))
 
     def _set_icon(self):
-        ico = os.path.join(BASE_DIR, "icon.ico")
-        png = os.path.join(BASE_DIR, "icon.png")
+        ico = os.path.join(BASE_DIR, "assets", "icon.ico")
+        png = os.path.join(BASE_DIR, "assets", "icon.png")
         try:
             if sys.platform.startswith("win") and os.path.exists(ico):
                 self.iconbitmap(ico)
@@ -287,37 +242,80 @@ class App(tk.Tk):
             pass
 
     def _build_main(self):
-        for w in self.winfo_children():
-            w.destroy()
+        shell = tk.Frame(self, bg=DARK_BG, highlightbackground=DARK_BORDER, highlightthickness=2)
+        shell.pack(fill="both", expand=True, padx=10, pady=10)
+        header = tk.Frame(shell, bg=DARK_BG2, height=76)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+        icon_path = Path(BASE_DIR) / "assets" / "icon.png"
+        if icon_path.exists():
+            self.brand_icon = tk.PhotoImage(file=str(icon_path)).subsample(8, 8)
+            tk.Label(header, image=self.brand_icon, bg=DARK_BG2).pack(side="left", padx=(16, 12))
+        tk.Label(header, text="I NEED GEAR", font=("Georgia", 20, "bold"),
+                 fg=DARK_ACCENT, bg=DARK_BG2).pack(side="left")
+        tk.Label(header, text=f"Версия {VERSION}", fg=DARK_FG_DIM, bg=DARK_BG2).pack(side="right", padx=20)
+        tk.Frame(shell, bg=DARK_BORDER, height=1).pack(fill="x")
+        body = tk.Frame(shell, bg=DARK_BG)
+        body.pack(fill="both", expand=True)
+        sidebar = tk.Frame(body, bg=DARK_BG2, width=192)
+        sidebar.pack(side="left", fill="y")
+        sidebar.pack_propagate(False)
+        tk.Label(sidebar, text="СНАРЯЖЕНИЕ", fg=DARK_FG_DIM, bg=DARK_BG2,
+                 font=("Segoe UI", 9, "bold"), anchor="w").pack(fill="x", padx=18, pady=(22, 12))
+        self.nav_buttons = {}
+        for key, text in (("home", "Обзор"), ("gear", "Аддон"), ("updates", "Обновления")):
+            button = tk.Button(sidebar, text=text, anchor="w", bd=0, relief="flat",
+                               bg=DARK_BG2, fg=DARK_ACCENT, activebackground="#44331d",
+                               activeforeground="#ffe3a0", font=("Segoe UI", 11), padx=18, pady=10,
+                               cursor="hand2", command=lambda page=key: self._select_page(page))
+            button.pack(fill="x", padx=5, pady=2)
+            self.nav_buttons[key] = button
+        tk.Frame(sidebar, bg=DARK_BORDER, height=1).pack(fill="x", padx=16, pady=20)
+        tk.Button(sidebar, text="Настройки", command=self.open_settings, anchor="w", bd=0,
+                  bg=DARK_BG2, fg=DARK_ACCENT, activebackground="#44331d", activeforeground="#ffe3a0",
+                  font=("Segoe UI", 11), padx=18, pady=10, cursor="hand2").pack(fill="x", padx=5)
+        tk.Label(sidebar, text="WoW Forever\nСнаряжение вашей группы", justify="left", anchor="w",
+                 bg=DARK_BG2, fg=DARK_FG_DIM, font=("Segoe UI", 9)).pack(side="bottom", padx=18, pady=20)
+        tk.Frame(body, bg=DARK_BORDER, width=1).pack(side="left", fill="y")
+        content = tk.Frame(body, bg=DARK_BG)
+        content.pack(side="left", fill="both", expand=True, padx=24, pady=20)
+        self.page_title = tk.Label(content, anchor="w", font=("Georgia", 18), fg=DARK_FG, bg=DARK_BG)
+        self.page_title.pack(fill="x")
+        tk.Frame(content, bg=DARK_BORDER, height=1).pack(fill="x", pady=(12, 16))
+        self.page_hint = tk.Label(content, anchor="nw", justify="left", wraplength=570,
+                                  fg=DARK_FG_DIM, bg=DARK_BG, font=("Segoe UI", 10), height=3)
+        self.page_hint.pack(fill="x")
+        self.page_action = ttk.Button(content)
+        self.page_action.pack(anchor="w", pady=(8, 20))
+        tk.Label(content, text="Журнал событий", anchor="w", fg=DARK_ACCENT,
+                 bg=DARK_BG, font=("Segoe UI", 10, "bold")).pack(fill="x", pady=(6, 8))
+        journal = tk.Frame(content, bg=DARK_ENTRY, highlightbackground=DARK_BORDER, highlightthickness=1)
+        journal.pack(fill="both", expand=True)
+        self.log_box = tk.Text(journal, state="disabled", wrap="word", bg=DARK_ENTRY,
+                               fg=DARK_FG, insertbackground=DARK_FG, relief="flat", bd=0,
+                               padx=12, pady=10, font=("Segoe UI", 10), height=8, width=45)
+        scrollbar = ttk.Scrollbar(journal, command=self.log_box.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.log_box.configure(yscrollcommand=scrollbar.set)
+        self.log_box.pack(fill="both", expand=True)
+        self._select_page("home")
 
-        tk.Label(
-            self,
-            text="I NEED GEAR",
-            font=("Segoe UI", 16, "bold"),
-            justify="center",
-            bg=DARK_BG,
-            fg=DARK_FG,
-        ).pack(pady=(18, 12))
-
-        ttk.Button(self, text="Синхронизировать снаряжение", command=self.on_update, width=28)\
-            .pack(pady=4, ipady=5)
-
-        ttk.Button(self, text="Установить аддон", command=self.on_install, width=28)\
-            .pack(pady=4, ipady=5)
-
-        ttk.Button(self, text="Проверить обновление", command=self.on_update_addon, width=28)\
-            .pack(pady=4, ipady=5)
-
-        ttk.Button(self, text="Настройки", command=self.open_settings, width=28)\
-            .pack(pady=4, ipady=5)
-
-        self.log_box = tk.Text(
-            self, height=9, width=46, state="disabled", wrap="word",
-            bg=DARK_ENTRY, fg=DARK_FG, insertbackground=DARK_FG,
-            relief="flat", highlightthickness=1,
-            highlightbackground=DARK_BORDER, highlightcolor=DARK_ACCENT,
-        )
-        self.log_box.pack(padx=12, pady=(12, 12), fill="both", expand=True)
+    def _select_page(self, page):
+        pages = {
+            "home": ("Снаряжение вашей группы", "Сохраните снаряжение в игре, затем закройте WoW.\nСинхронизация отправит ваши данные и загрузит данные друзей.",
+                     "Синхронизировать снаряжение", self.on_update),
+            "gear": ("Установка аддона", "Укажите папку Interface\\AddOns в настройках.\nПосле установки откройте окно в игре командой /ing.",
+                     "Установить аддон", self.on_install),
+            "updates": ("Обновления", "Программа и аддон получают обновления из GitHub Releases.\nПеред установкой новой версии полностью закройте WoW.",
+                        "Проверить обновление", self.on_update_addon),
+        }
+        title, hint, action, command = pages[page]
+        self.page_title.configure(text=title)
+        self.page_hint.configure(text=hint)
+        self.page_action.configure(text=action, command=command)
+        for key, button in self.nav_buttons.items():
+            button.configure(bg="#44331d" if key == page else DARK_BG2,
+                             fg="#ffe3a0" if key == page else DARK_ACCENT)
 
     def log(self, msg):
         ts = datetime.now().strftime("%H:%M:%S")
@@ -411,11 +409,12 @@ class SettingsWindow(tk.Toplevel):
         super().__init__(parent)
         apply_dark_theme(self)
         self.title("Настройки")
-        self.geometry("460x480")
+        self.geometry("580x640")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
 
+        self.iconbitmap(str(Path(BASE_DIR) / "assets" / "icon.ico")) if sys.platform.startswith("win") else None
         self.settings = settings.copy()
         self.on_save = on_save
         self._build()
@@ -512,6 +511,13 @@ def run():
         app = App()
         app.withdraw()
         app.update_idletasks()
+        for page in ("gear", "updates", "home"):
+            app._select_page(page)
+            app.update_idletasks()
+        settings = SettingsWindow(app, app.settings, lambda value: None)
+        settings.withdraw()
+        settings.update_idletasks()
+        settings.destroy()
         app.destroy()
         Path(sys.argv[2]).write_text("Запуск успешен", encoding="utf-8")
     else:

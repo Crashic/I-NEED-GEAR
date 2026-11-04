@@ -4,8 +4,8 @@ INEEDGEARDB = INEEDGEARDB or { characters = {}, imported = {} }
 -- ==========================================================
 -- Окно
 -- ==========================================================
-local frame = CreateFrame("Frame", "INEEDGEARFrame", UIParent)
-frame:SetSize(720, 500)
+local frame = CreateFrame("Frame", "INEEDGEARFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+frame:SetSize(1000, 580)
 frame:SetPoint("CENTER")
 frame:SetMovable(true)
 frame:EnableMouse(true)
@@ -16,14 +16,41 @@ frame:SetFrameStrata("DIALOG")
 frame:Hide()
 
 frame:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile = true, tileSize = 32, edgeSize = 32,
-    insets = { left = 8, right = 8, top = 8, bottom = 8 }
+    bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true, tileSize = 16, edgeSize = 16,
+    insets = { left = 4, right = 4, top = 4, bottom = 4 }
 })
+frame:SetBackdropColor(0.055, 0.045, 0.035, 0.97)
+frame:SetBackdropBorderColor(0.55, 0.38, 0.18, 1)
+table.insert(UISpecialFrames, "INEEDGEARFrame")
+
+local logo = frame:CreateTexture(nil, "ARTWORK")
+logo:SetSize(40, 40)
+logo:SetPoint("TOPLEFT", 18, -13)
+logo:SetTexture("Interface\\AddOns\\INEEDGEAR\\icon.tga")
+
+local headerLine = frame:CreateTexture(nil, "ARTWORK")
+headerLine:SetColorTexture(0.45, 0.31, 0.14, 1)
+headerLine:SetPoint("TOPLEFT", 12, -66)
+headerLine:SetPoint("TOPRIGHT", -12, -66)
+headerLine:SetHeight(1)
+
+local sidebar = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+sidebar:SetColorTexture(0.11, 0.085, 0.06, 1)
+sidebar:SetPoint("TOPLEFT", 8, -68)
+sidebar:SetPoint("BOTTOMLEFT", 8, 8)
+sidebar:SetWidth(192)
+
+local sidebarLine = frame:CreateTexture(nil, "ARTWORK")
+sidebarLine:SetColorTexture(0.45, 0.31, 0.14, 1)
+sidebarLine:SetPoint("TOPLEFT", 202, -68)
+sidebarLine:SetPoint("BOTTOMLEFT", 202, 12)
+sidebarLine:SetWidth(1)
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-title:SetPoint("TOP", 0, -16)
+title:SetPoint("TOPLEFT", 72, -24)
+title:SetTextColor(0.88, 0.73, 0.36)
 title:SetText("I NEED GEAR")
 
 local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
@@ -39,20 +66,23 @@ local function ShowTab(index)
     for i, t in ipairs(tabs) do
         t.content:Hide()
         t.button:UnlockHighlight()
+        t.button:SetNormalFontObject("GameFontNormal")
     end
     tabs[index].content:Show()
     tabs[index].button:LockHighlight()
+    tabs[index].button:SetNormalFontObject("GameFontHighlight")
     activeTab = index
 end
 
 for i = 1, 3 do
-    local btn = CreateFrame("Button", nil, frame, "CharacterFrameTabButtonTemplate")
+    local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     btn:SetID(i)
-    btn:SetPoint("TOPLEFT", 20 + (i - 1) * 120, -42)
+    btn:SetSize(172, 32)
+    btn:SetPoint("TOPLEFT", 18, -96 - (i - 1) * 42)
     btn:SetScript("OnClick", function(self) ShowTab(self:GetID()) end)
 
     local content = CreateFrame("Frame", nil, frame)
-    content:SetPoint("TOPLEFT", 14, -76)
+    content:SetPoint("TOPLEFT", 218, -86)
     content:SetPoint("BOTTOMRIGHT", -14, 14)
     content:Hide()
 
@@ -157,11 +187,13 @@ detailBox:SetBackdrop({
     tile = true, tileSize = 16, edgeSize = 16,
     insets = { left = 4, right = 4, top = 4, bottom = 4 }
 })
-detailBox:SetBackdropColor(0, 0, 0, 0.4)
+detailBox:SetBackdropColor(0.06, 0.05, 0.04, 0.9)
+detailBox:SetBackdropBorderColor(0.55, 0.38, 0.18, 1)
 
 local detailText = detailBox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 detailText:SetPoint("TOPLEFT", 8, -8)
 detailText:SetJustifyH("LEFT")
+detailText:SetWidth(420)
 detailText:SetText("Выбери персонажа слева.")
 
 local function ShowCharacterDetail(displayName, rawLua)
