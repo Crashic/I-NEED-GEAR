@@ -218,6 +218,9 @@ def do_update(settings, log_fn):
 # ==========================================================
 class App(tk.Tk):
     def __init__(self):
+        if sys.platform.startswith("win"):
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Crashic.INEEDGEAR.Desktop.2")
         super().__init__()
         self.title(f"I NEED GEAR {VERSION}")
         self.geometry("900x640")
